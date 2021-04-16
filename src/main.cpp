@@ -20,10 +20,7 @@
 
 static void on_render() { glRecti(-1, -1, 1, 1); }
 
-static void on_realize() {
-    glewExperimental = GL_TRUE;
-    glewInit();
-
+static int on_update() {
     // compile shader
     GLuint f = glCreateShader(GL_FRAGMENT_SHADER);
     const GLchar *frag_source_gl = frag_source.c_str();
@@ -38,9 +35,9 @@ static void on_realize() {
 
         char *error = (char *)malloc(maxLength);
         glGetShaderInfoLog(f, maxLength, &maxLength, error);
-        printf("%s\n", error);
+        std::cerr << error << std::endl;
 
-        exit(-10);
+        return -1;
     }
 
     // link shader
@@ -56,12 +53,19 @@ static void on_realize() {
 
         char *error = (char *)malloc(maxLength);
         glGetProgramInfoLog(p, maxLength, &maxLength, error);
-        printf("%s\n", error);
+        std::cerr << error << std::endl;
 
-        exit(-10);
+        return -2;
     }
 
     glUseProgram(p);
+    return 0;
+}
+
+static void on_realize() {
+    glewExperimental = GL_TRUE;
+    glewInit();
+    on_update();
 }
 
 int main(int argc, char *argv[]) {
