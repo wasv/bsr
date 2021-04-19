@@ -9,21 +9,43 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_timer.h>
 
+#include <errno.h>
+#include <libgen.h>
+#include <limits.h>
+#include <stdint.h>
+#include <sys/inotify.h>
+#include <unistd.h>
+
+#include <cstring>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <stdio.h>
-
-#include "frag.h"
+#include <string>
 
 #define CANVAS_WIDTH 1920
 #define CANVAS_HEIGHT 1080
 
-static void on_render() { glRecti(-1, -1, 1, 1); }
+#define NUM_EVENTS 5
+#define EVENT_SIZE (sizeof(struct inotify_event) + PATH_MAX) /*size of one event*/
+#define EVENT_BUF_SIZE (EVENT_SIZE * NUM_EVENTS)
 
-static int on_update() {
+#define SCREEN_FPS 60
+#define SCREEN_TICKS_PER_FRAME 1000 / SCREEN_FPS
+
+std::string read_file(std::string filename) {
+    std::ifstream in(filename);
+    std::ostringstream sstr;
+    sstr << in.rdbuf();
+    return sstr.str();
+}
+
+static int update_shader(std::string shader_src) {
     // compile shader
     GLuint f = glCreateShader(GL_FRAGMENT_SHADER);
-    const GLchar *frag_source_gl = frag_source.c_str();
+    const GLchar *frag_source_gl = shader_src.c_str();
     glShaderSource(f, 1, &frag_source_gl, NULL);
     glCompileShader(f);
 
@@ -62,32 +84,74 @@ static int on_update() {
     return 0;
 }
 
-static void on_realize() {
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " shader_file" << std::endl;
+        return -1;
+    }
+    char *shader_path = argv[1];
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    SDL_Window *window = SDL_CreateWindow("", 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, SDL_WINDOW_OPENGL);
+
+    SDL_GL_CreateContext(window);
+    SDL_ShowCursor(false);
+
     glewExperimental = GL_TRUE;
     glewInit();
-    on_update();
-}
+    std::string shader = read_file(shader_path);
+    update_shader(shader);
 
-int main(int argc, char *argv[]) {
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-    SDL_Window *mainwindow = SDL_CreateWindow("", 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, SDL_WINDOW_OPENGL);
+    int inotfd = inotify_init1(IN_NONBLOCK);
+    if (inotfd < 0) {
+        std::cerr << "Could not initialize inotify." << std::endl;
+        return -2;
+    }
 
-    SDL_GL_CreateContext(mainwindow);
-    SDL_ShowCursor(false);
-    on_realize();
+    char *shader_dir = dirname(strdup(shader_path));
+    char *shader_file = basename(strdup(shader_path));
+    int watchfd = inotify_add_watch(inotfd, shader_dir, IN_MODIFY);
+    if (watchfd < 0) {
+        std::cerr << "Could not watch file." << std::endl;
+        return -2;
+    }
 
-    while (true) {
-        SDL_Event Event;
-        while (SDL_PollEvent(&Event)) {
+    bool quit = false;
+    SDL_Event Event;
+    uint32_t lastframe = SDL_GetTicks();
+    uint8_t *event_buf = (uint8_t *)malloc(EVENT_BUF_SIZE + 1);
+    while (!quit) {
+        int length = read(inotfd, event_buf, EVENT_BUF_SIZE);
+        if (length < 0 && errno != EAGAIN) {
+            std::cerr << "Read error on inotify: " << strerror(errno) << std::endl;
+        }
+
+        if (length >= 0) {
+            size_t event_buf_i = 0;
+            while (event_buf_i < length) {
+                struct inotify_event *event = (struct inotify_event *)&event_buf[event_buf_i];
+
+                if (strcmp(event->name, shader_file) == 0) {
+                    std::cout << event->name << " modified." << std::endl;
+                    std::string shader = read_file(shader_path);
+                    update_shader(shader);
+                }
+                event_buf_i += sizeof(struct inotify_event) + event->len;
+            }
+        }
+
+        if (!SDL_PollEvent(&Event)) {
             if (Event.type == SDL_QUIT || (Event.type == SDL_KEYDOWN && Event.key.keysym.sym == SDLK_ESCAPE)) {
-                return 0;
+                quit = true;
             }
-            if (Event.type == SDL_WINDOWEVENT && Event.window.event == SDL_WINDOWEVENT_EXPOSED) {
-                on_render();
-                SDL_GL_SwapWindow(mainwindow);
-            }
+        }
+
+        if (SDL_GetTicks() - lastframe > SCREEN_TICKS_PER_FRAME) {
+            glRecti(-1, -1, 1, 1);
+            SDL_GL_SwapWindow(window);
+            lastframe = SDL_GetTicks();
         }
     }
 
+    inotify_rm_watch(inotfd, watchfd);
     return 0;
 }

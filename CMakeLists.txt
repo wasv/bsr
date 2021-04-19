@@ -31,7 +31,6 @@ include_directories(src/include/)
 # Add executable target with source files listed in SOURCES variable
 file(GLOB SOURCES src/*.cpp)
 add_executable(${PROJECT} ${SOURCES})
-add_dependencies(${PROJECT} shaders)
 target_include_directories(${PROJECT} PRIVATE 
     ${SDL2_INCLUDE_DIR}
     OpenGL::OpenGL GLEW::glew
