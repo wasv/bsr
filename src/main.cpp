@@ -1,15 +1,7 @@
 #define GL_GLEXT_PROTOTYPES
 
-#include <GL/glew.h>
-#include <GL/glext.h>
-#include <GL/glu.h>
-#include <GL/glx.h>
-
-#include <GL/gl.h>
-
+#include "gfx.h"
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_timer.h>
 
 #include <errno.h>
 #include <libgen.h>
@@ -33,7 +25,6 @@
 #define EVENT_BUF_SIZE (EVENT_SIZE * NUM_EVENTS)
 
 #define SCREEN_FPS 60
-#define SCREEN_TICKS_PER_FRAME 1000 / SCREEN_FPS
 
 std::string read_file(std::string filename) {
     std::ifstream in(filename);
@@ -42,64 +33,18 @@ std::string read_file(std::string filename) {
     return sstr.str();
 }
 
-static int update_shader(std::string shader_src) {
-    // compile shader
-    GLuint f = glCreateShader(GL_FRAGMENT_SHADER);
-    const GLchar *frag_source_gl = shader_src.c_str();
-    glShaderSource(f, 1, &frag_source_gl, NULL);
-    glCompileShader(f);
-
-    GLint isCompiled = 0;
-    glGetShaderiv(f, GL_COMPILE_STATUS, &isCompiled);
-    if (isCompiled == GL_FALSE) {
-        GLint maxLength = 0;
-        glGetShaderiv(f, GL_INFO_LOG_LENGTH, &maxLength);
-
-        char *error = (char *)malloc(maxLength);
-        glGetShaderInfoLog(f, maxLength, &maxLength, error);
-        std::cerr << error << std::endl;
-
-        return -1;
-    }
-
-    // link shader
-    GLuint p = glCreateProgram();
-    glAttachShader(p, f);
-    glLinkProgram(p);
-
-    GLint isLinked = 0;
-    glGetProgramiv(p, GL_LINK_STATUS, (int *)&isLinked);
-    if (isLinked == GL_FALSE) {
-        GLint maxLength = 0;
-        glGetProgramiv(p, GL_INFO_LOG_LENGTH, &maxLength);
-
-        char *error = (char *)malloc(maxLength);
-        glGetProgramInfoLog(p, maxLength, &maxLength, error);
-        std::cerr << error << std::endl;
-
-        return -2;
-    }
-
-    glUseProgram(p);
-    return 0;
-}
-
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " shader_file" << std::endl;
         return -1;
     }
     char *shader_path = argv[1];
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-    SDL_Window *window = SDL_CreateWindow("", 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, SDL_WINDOW_OPENGL);
 
-    SDL_GL_CreateContext(window);
-    SDL_ShowCursor(false);
+    Renderer renderer = Renderer(CANVAS_WIDTH, CANVAS_HEIGHT, SCREEN_FPS);
 
-    glewExperimental = GL_TRUE;
-    glewInit();
-    std::string shader = read_file(shader_path);
-    update_shader(shader);
+    Shader shader;
+    std::string shader_src = read_file(shader_path);
+    shader.reload(shader_src);
 
     int inotfd = inotify_init1(IN_NONBLOCK);
     if (inotfd < 0) {
@@ -117,7 +62,6 @@ int main(int argc, char *argv[]) {
 
     bool quit = false;
     SDL_Event Event;
-    uint32_t lastframe = SDL_GetTicks();
     uint8_t *event_buf = (uint8_t *)malloc(EVENT_BUF_SIZE + 1);
     while (!quit) {
         int length = read(inotfd, event_buf, EVENT_BUF_SIZE);
@@ -132,8 +76,8 @@ int main(int argc, char *argv[]) {
 
                 if (strcmp(event->name, shader_file) == 0) {
                     std::cout << event->name << " modified." << std::endl;
-                    std::string shader = read_file(shader_path);
-                    update_shader(shader);
+                    std::string shader_src = read_file(shader_path);
+                    shader.reload(shader_src);
                 }
                 event_buf_i += sizeof(struct inotify_event) + event->len;
             }
@@ -145,11 +89,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (SDL_GetTicks() - lastframe > SCREEN_TICKS_PER_FRAME) {
-            glRecti(-1, -1, 1, 1);
-            SDL_GL_SwapWindow(window);
-            lastframe = SDL_GetTicks();
-        }
+        renderer.draw();
     }
 
     inotify_rm_watch(inotfd, watchfd);
