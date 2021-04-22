@@ -40,3 +40,12 @@ jobs:
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
+
+    - name: Upload Binary
+      uses: actions/upload-artifact@v2.2.3
+      with:
+        # Artifact name
+        name: Binary
+        # A file, directory or wildcard pattern that describes what to upload
+        path: ${{github.workspace}}/build/bsr
+        # The desired behavior if no files are found using the provided path.
