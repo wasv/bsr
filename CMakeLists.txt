@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)  # CMake version check
-set(PROJECT brr)
+set(PROJECT bsr)
 project(${PROJECT} CXX)               # Create project
 set(CMAKE_CXX_STANDARD 20)            # Enable c++20 standard
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
