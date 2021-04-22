@@ -11,7 +11,7 @@ Renderer::Renderer(uint32_t width, uint32_t height, uint32_t fps) : frame_period
     glewExperimental = GL_TRUE;
     GLenum err = glewInit();
     if (err != GLEW_OK) {
-        std::cout << "glewInit failed: " << glewGetErrorString(err) << std::endl;
+        std::cerr << "glewInit failed: " << glewGetErrorString(err) << std::endl;
         exit(-2);
     }
 

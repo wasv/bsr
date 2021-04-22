@@ -2,6 +2,7 @@
 
 #include "gfx.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_timer.h>
 
 #include <errno.h>
 #include <libgen.h>
@@ -45,6 +46,7 @@ int main(int argc, char *argv[]) {
     Shader shader;
     std::string shader_src = read_file(shader_path);
     shader.reload(shader_src);
+    shader.set_constant("v2Resolution", CANVAS_WIDTH, CANVAS_HEIGHT);
 
     int inotfd = inotify_init1(IN_NONBLOCK);
     if (inotfd < 0) {
@@ -78,6 +80,7 @@ int main(int argc, char *argv[]) {
                     std::cout << event->name << " modified." << std::endl;
                     std::string shader_src = read_file(shader_path);
                     shader.reload(shader_src);
+                    shader.set_constant("v2Resolution", CANVAS_WIDTH, CANVAS_HEIGHT);
                 }
                 event_buf_i += sizeof(struct inotify_event) + event->len;
             }
@@ -89,6 +92,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        shader.set_constant("fGlobalTime", SDL_GetTicks());
         renderer.draw();
     }
 
