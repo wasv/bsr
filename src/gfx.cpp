@@ -1,32 +1,21 @@
-#include "gfx.h"
-
 #include <iostream>
 
-Renderer::Renderer(uint32_t width, uint32_t height, uint32_t fps) : frame_period(1000 / fps) {
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
-    this->window = SDL_CreateWindow("", 0, 0, width, height, SDL_WINDOW_OPENGL);
-    SDL_GL_CreateContext(this->window);
-    SDL_ShowCursor(false);
+#include "gfx.h"
 
+Renderer::Renderer() {
     glewExperimental = GL_TRUE;
     GLenum err = glewInit();
     if (err != GLEW_OK) {
         std::cerr << "glewInit failed: " << glewGetErrorString(err) << std::endl;
         exit(-2);
     }
-
-    lastframe = SDL_GetTicks();
 }
 
 void Renderer::draw() {
-    if (SDL_GetTicks() - lastframe > this->frame_period) {
-        glRecti(-1, -1, 1, 1);
-        SDL_GL_SwapWindow(this->window);
-        lastframe = SDL_GetTicks();
-    }
+    glRecti(-1, -1, 1, 1);
 }
 
-void Shader::set_constant(const std::string const_name, float x) {
+void Renderer::set_constant(const std::string const_name, float x) {
     const GLchar *const_name_gl = const_name.c_str();
 
     GLint location = glGetUniformLocation(this->program, const_name_gl);
@@ -35,7 +24,7 @@ void Shader::set_constant(const std::string const_name, float x) {
     }
 }
 
-void Shader::set_constant(const std::string const_name, float x, float y) {
+void Renderer::set_constant(const std::string const_name, float x, float y) {
     const GLchar *const_name_gl = const_name.c_str();
 
     GLint location = glGetUniformLocation(this->program, const_name_gl);
@@ -44,7 +33,7 @@ void Shader::set_constant(const std::string const_name, float x, float y) {
     }
 }
 
-int Shader::reload(std::string shader_src) {
+int Renderer::reload(std::string shader_src) {
     // compile shader
     GLuint f = glCreateShader(GL_FRAGMENT_SHADER);
     const GLchar *frag_source_gl = shader_src.c_str();

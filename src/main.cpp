@@ -26,6 +26,7 @@
 #define EVENT_BUF_SIZE (EVENT_SIZE * NUM_EVENTS)
 
 #define SCREEN_FPS 60
+#define SCREEN_PERIOD 1000 / SCREEN_FPS
 
 std::string read_file(std::string filename) {
     std::ifstream in(filename);
@@ -41,12 +42,15 @@ int main(int argc, char *argv[]) {
     }
     char *shader_path = argv[1];
 
-    Renderer renderer = Renderer(CANVAS_WIDTH, CANVAS_HEIGHT, SCREEN_FPS);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    SDL_Window* window = SDL_CreateWindow("", 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, SDL_WINDOW_OPENGL);
+    SDL_GL_CreateContext(window);
+    SDL_ShowCursor(false);
 
-    Shader shader;
+    Renderer renderer;
     std::string shader_src = read_file(shader_path);
-    shader.reload(shader_src);
-    shader.set_constant("v2Resolution", CANVAS_WIDTH, CANVAS_HEIGHT);
+    renderer.reload(shader_src);
+    renderer.set_constant("v2Resolution", CANVAS_WIDTH, CANVAS_HEIGHT);
 
     int inotfd = inotify_init1(IN_NONBLOCK);
     if (inotfd < 0) {
@@ -65,6 +69,7 @@ int main(int argc, char *argv[]) {
     bool quit = false;
     SDL_Event Event;
     uint8_t *event_buf = (uint8_t *)malloc(EVENT_BUF_SIZE + 1);
+    uint32_t lastframe = SDL_GetTicks();
     while (!quit) {
         int length = read(inotfd, event_buf, EVENT_BUF_SIZE);
         if (length < 0 && errno != EAGAIN) {
@@ -79,8 +84,8 @@ int main(int argc, char *argv[]) {
                 if (strcmp(event->name, shader_file) == 0) {
                     std::cout << event->name << " modified." << std::endl;
                     std::string shader_src = read_file(shader_path);
-                    shader.reload(shader_src);
-                    shader.set_constant("v2Resolution", CANVAS_WIDTH, CANVAS_HEIGHT);
+                    renderer.reload(shader_src);
+                    renderer.set_constant("v2Resolution", CANVAS_WIDTH, CANVAS_HEIGHT);
                 }
                 event_buf_i += sizeof(struct inotify_event) + event->len;
             }
@@ -92,8 +97,13 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        shader.set_constant("fGlobalTime", SDL_GetTicks());
-        renderer.draw();
+        renderer.set_constant("fGlobalTime", SDL_GetTicks());
+
+        if (SDL_GetTicks() - lastframe > SCREEN_PERIOD) {
+            renderer.draw();
+            SDL_GL_SwapWindow(window);
+            lastframe = SDL_GetTicks();
+        }
     }
 
     inotify_rm_watch(inotfd, watchfd);
