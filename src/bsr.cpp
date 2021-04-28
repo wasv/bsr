@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        renderer.set_constant("fGlobalTime", SDL_GetTicks());
+        renderer.set_constant("fGlobalTime", SDL_GetTicks()/1000.0);
 
         if (SDL_GetTicks() - lastframe > SCREEN_PERIOD) {
             renderer.draw();

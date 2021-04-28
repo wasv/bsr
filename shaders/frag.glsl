@@ -9,7 +9,7 @@ void main()
 {
     float ar = v2Resolution.y/v2Resolution.x;
     vec2 pos = (gl_FragCoord.xy / v2Resolution.xy - vec2(0.5,0.5)) / vec2(ar, 1.0);
-    pos += vec2( cos((fGlobalTime/5000)*3.14*2), sin((fGlobalTime/5000)*3.14*2) ) / 4;
+    pos += vec2( cos((fGlobalTime/2)*3.14*2), sin((fGlobalTime/2)*3.14*2) ) / 4;
 
     vec2 uv1 = step(vec2(-0.1,-0.5), pos)    * step(pos, vec2(0.1,0.5))    *
         smoothstep(0.5, -0.1, abs(pos));

@@ -45,11 +45,11 @@ std::string read_file(std::string filename) {
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " shader_file frames" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " shader_file seconds" << std::endl;
         return -1;
     }
     char *shader_path = argv[1];
-    uint32_t frame_count = atoi(argv[2]);
+    uint32_t duration = atof(argv[2]);
     std::ofstream output_file("out.mpeg", std::fstream::binary);
 
     Encoder encoder(output_file, OUTPUT_FPS, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -89,8 +89,8 @@ int main(int argc, char *argv[]) {
     renderer.set_constant("v2Resolution", CANVAS_WIDTH, CANVAS_HEIGHT);
 
     GLubyte *pixels = (GLubyte *)malloc(CANVAS_NBYTES * sizeof(GLubyte));
-    for(int i = 0; i<frame_count; i++) {
-        renderer.set_constant("fGlobalTime", i*(1000.0/OUTPUT_FPS));
+    for(int i = 0; i<duration*OUTPUT_FPS; i++) {
+        renderer.set_constant("fGlobalTime", i*(1.0/OUTPUT_FPS));
         renderer.draw();
         glReadPixels(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
         encoder.encode((uint8_t*)pixels);
