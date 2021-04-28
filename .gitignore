@@ -1,3 +1,5 @@
+*.mpeg
+
 # CMake
 CMakeLists.txt.user
 CMakeCache.txt
