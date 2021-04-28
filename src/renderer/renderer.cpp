@@ -1,12 +1,12 @@
 #include <iostream>
 
-#include "gfx.h"
+#include "renderer.h"
 
 Renderer::Renderer() {
     glewExperimental = GL_TRUE;
     GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        std::cerr << "glewInit failed: " << glewGetErrorString(err) << std::endl;
+    if (err != GLEW_OK && err != 4) {
+        std::cerr << "glewInit failed: " << glewGetErrorString(err) << " " << err << std::endl;
         exit(-2);
     }
 }

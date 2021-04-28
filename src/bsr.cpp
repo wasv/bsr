@@ -1,6 +1,7 @@
 #define GL_GLEXT_PROTOTYPES
 
-#include "gfx.h"
+#include "renderer.h"
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 
