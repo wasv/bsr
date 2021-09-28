@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <libavcodec/packet.h>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -60,31 +61,29 @@ void Encoder::yuv_from_rgb(uint8_t *rgb) {
 }
 
 int Encoder::encode(uint8_t *rgb) {
-    AVPacket pkt;
     int got_output;
     this->yuv_from_rgb(rgb);
-    av_init_packet(&pkt);
-    pkt.data = NULL;
-    pkt.size = 0;
+    AVPacket *pkt = av_packet_alloc();
     frame->pts += 1;
     if (avcodec_send_frame(c, frame) < 0) {
         std::cerr << "Error sending frame to encoder." << std::endl;
         return -1;
     }
 
-    int ret = avcodec_receive_packet(c, &pkt);
+    int ret = avcodec_receive_packet(c, pkt);
     while (ret >= 0) {
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
             break;
         } else if (ret < 0) {
             std::cerr << "Error during encoding." << std::endl;
+            av_packet_unref(pkt);
             return -2;
         }
-        output_file.write((char *)pkt.data, pkt.size);
-        av_packet_unref(&pkt);
+        output_file.write((char *)pkt->data, pkt->size);
 
-        ret = avcodec_receive_packet(c, &pkt);
+        ret = avcodec_receive_packet(c, pkt);
     }
+    av_packet_free(&pkt);
     return 0;
 }
 
@@ -95,6 +94,7 @@ void Encoder::finish() {
 }
 
 Encoder::~Encoder() {
+    sws_freeContext(sws_context);
     avcodec_close(c);
     av_free(c);
     av_freep(&frame->data[0]);

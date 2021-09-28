@@ -95,10 +95,9 @@ int main(int argc, char *argv[]) {
         glReadPixels(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
         encoder.encode((uint8_t*)pixels);
     }
+    free(pixels);
     encoder.finish();
 
     eglTerminate(eglDpy);
-
-    free(pixels);
     return 0;
 }
